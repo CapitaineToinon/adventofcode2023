@@ -1,136 +1,107 @@
-import gleam/bool
+import argv
+import day01
+import day02
+import day03
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
-import gleam/list
-import gleam/option.{type Option, None, Some}
-import gleam/result.{replace_error, try}
+import gleam/result.{try}
 import gleam/string
+import gleam/time/duration
+import gleam/time/timestamp
 import simplifile
 
-fn split_lines(content: String) -> List(String) {
-  content
-  |> string.trim
-  |> string.split("\n")
-  |> list.map(string.trim)
-  |> list.filter(fn(a) {
-    a
-    |> string.is_empty
-    |> bool.negate
-  })
+type Day =
+  fn(String) -> Result(Nil, String)
+
+type Days =
+  Dict(Int, Day)
+
+fn get_argument() -> Result(String, String) {
+  case argv.load().arguments {
+    [string] -> Ok(string)
+    _ -> Error("argument not found")
+  }
 }
 
-type Digit {
-  Digit(value: Int, name: String)
+fn time(cb: fn() -> b) -> b {
+  let now = timestamp.system_time()
+  let result = cb()
+  let then = timestamp.system_time()
+  let diff = timestamp.difference(now, then)
+  let ms = duration.to_milliseconds(diff)
+
+  io.println("Executed in " <> int.to_string(ms) <> " ms")
+  result
 }
 
-const digits: List(Digit) = [
-  Digit(0, "zero"),
-  Digit(1, "one"),
-  Digit(2, "two"),
-  Digit(3, "three"),
-  Digit(4, "four"),
-  Digit(5, "five"),
-  Digit(6, "six"),
-  Digit(7, "seven"),
-  Digit(8, "eight"),
-  Digit(9, "nine"),
-]
+fn time_day(day: Day, input: String) {
+  use <- time
+  day(input |> string.trim)
+}
 
-fn find_left_digit(
-  content: String,
-  digits: List(Digit),
-  match_literal: Bool,
-) -> Result(Int, String) {
-  use #(_, rest) <- try(
-    content
-    |> string.pop_grapheme
-    |> replace_error("string is empty"),
+fn do_day(days: Days, i: Int) {
+  let arg =
+    i
+    |> int.to_string
+    |> string.pad_start(2, "0")
+
+  use day <- try(
+    dict.get(days, i)
+    |> result.replace_error("day " <> arg <> " not found or implemented yet"),
   )
 
-  case content |> get_left_digit(digits, match_literal) {
-    Some(number) -> Ok(number)
-    None -> rest |> find_left_digit(digits, match_literal)
-  }
+  use file <- try(
+    simplifile.read("./input/day" <> arg)
+    |> result.replace_error("input file for day " <> arg <> " not found"),
+  )
+
+  time_day(day, file)
 }
 
-fn get_left_digit(
-  content: String,
-  digits: List(Digit),
-  match_literal: Bool,
-) -> Option(Int) {
-  case digits {
-    [number, ..other_numbers] -> {
-      case
-        content
-        |> string.starts_with(number.value |> int.to_string)
-        |> bool.or(
-          match_literal
-          |> bool.and(
-            content
-            |> string.starts_with(number.name),
-          ),
-        )
-      {
-        True -> Some(number.value)
-        False -> content |> get_left_digit(other_numbers, match_literal)
-      }
-    }
-    _ -> None
-  }
-}
+fn execute_day() -> Result(Nil, String) {
+  let days =
+    dict.from_list([
+      #(1, day01.main),
+      #(2, day02.main),
+      #(3, day03.main),
+      // #(4, day04.main),
+    // #(5, day05.main),
+    // #(6, day06.main),
+    // #(7, day07.main),
+    // #(8, day08.main),
+    // #(9, day09.main),
+    // #(10, day10.main),
+    // #(11, day11.main),
+    // #(12, day12.main),
+    // #(13, day13.main),
+    // #(14, day14.main),
+    // #(15, day15.main),
+    // #(16, day16.main),
+    // #(17, day17.main),
+    // #(18, day18.main),
+    // #(19, day19.main),
+    // #(20, day20.main),
+    // #(21, day21.main),
+    // #(22, day22.main),
+    // #(23, day23.main),
+    // #(24, day24.main),
+    // #(25, day25.main),
+    ])
 
-fn find_right_digit(
-  content: String,
-  digits: List(Digit),
-  match_literal: Bool,
-) -> Result(Int, String) {
-  let reversed_digits =
-    digits
-    |> list.map(fn(digit) { Digit(digit.value, digit.name |> string.reverse) })
+  use arg <- result.try(get_argument())
 
-  content
-  |> string.reverse
-  |> find_left_digit(reversed_digits, match_literal)
-}
+  use i <- result.try(
+    int.parse(arg)
+    |> result.replace_error("argument " <> arg <> " is not a valid number"),
+  )
 
-fn solve_line(content: String, match_literal: Bool) -> Result(Int, String) {
-  use left <- try(find_left_digit(content, digits, match_literal))
-  use right <- try(find_right_digit(content, digits, match_literal))
-
-  Ok(left * 10 + right)
-}
-
-fn solve(content: List(String), match_literal: Bool) -> Result(Int, String) {
-  content
-  |> list.map(solve_line(_, match_literal))
-  |> result.all
-  |> result.map(int.sum)
+  do_day(days, i)
 }
 
 pub fn main() -> Nil {
-  let assert Ok(content) = simplifile.read(from: "./input/day01")
-
-  let lines =
-    content
-    |> split_lines
-
-  let assert Ok(_) =
-    lines
-    |> solve(False)
-    |> result.map(fn(total) {
-      total
-      |> int.to_string
-      |> io.println
-    })
-
-  let assert Ok(_) =
-    lines
-    |> solve(True)
-    |> result.map(fn(total) {
-      total
-      |> int.to_string
-      |> io.println
-    })
-
-  Nil
+  case execute_day() {
+    Ok(_) -> Nil
+    Error(message) -> io.println_error(message)
+  }
 }
