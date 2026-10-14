@@ -2,6 +2,7 @@ import argv
 import day01
 import day02
 import day03
+import day04
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
@@ -65,8 +66,8 @@ fn execute_day() -> Result(Nil, String) {
       #(1, day01.main),
       #(2, day02.main),
       #(3, day03.main),
-      // #(4, day04.main),
-    // #(5, day05.main),
+      #(4, day04.main),
+      // #(5, day05.main),
     // #(6, day06.main),
     // #(7, day07.main),
     // #(8, day08.main),
